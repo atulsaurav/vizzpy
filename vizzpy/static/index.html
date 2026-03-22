@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VizzPy — Python Call Tree Vizualizer</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>VizzPy</h1>
+    <p class="tagline">Python call tree visualizer</p>
+    <button id="dark-toggle">Dark</button>
+  </header>
+
+  <section id="upload-panel">
+    <div id="upload-header">
+      <span id="upload-summary">Upload a Python project (.zip, .tar.gz, .egg, or .whl) to visualize its call tree</span>
+      <button id="upload-toggle" title="Collapse upload panel">&#x25B2;</button>
+    </div>
+    <div id="upload-body">
+      <label id="drop-zone" for="file-input">
+        <span id="drop-label">Drop a <strong>.zip</strong>, <strong>.tar.gz</strong>, <strong>.egg</strong>, or <strong>.whl</strong> of your Python project here, or click to browse</span>
+        <input type="file" id="file-input" accept=".zip,.tar.gz,.tgz,.egg,.whl" hidden />
+      </label>
+      <button id="analyze-btn" disabled>Analyze</button>
+      <p id="status-msg"></p>
+    </div>
+  </section>
+
+  <section id="graph-panel" hidden>
+    <div id="toolbar">
+      <button id="fit-btn" title="Fit to screen">&#x229E; Fit</button>
+      <button id="level-btn" title="Toggle between function-level and module-level view">Function view</button>
+      <button id="deep-trace-btn" title="When a node is selected: Immediate shows direct callers/callees only; Deep trace follows the full upstream and downstream call chain">Immediate</button>
+      <span id="node-count"></span>
+    </div>
+    <svg id="graph-svg">
+      <rect id="zoom-bg" fill="transparent"></rect>
+      <g id="graph-inner"></g>
+    </svg>
+    <div id="minimap-container" hidden>
+      <svg id="minimap-svg" width="200" height="140"></svg>
+      <canvas id="minimap-canvas" width="200" height="140"></canvas>
+      <svg id="minimap-overlay" width="200" height="140">
+        <rect id="minimap-viewport" />
+      </svg>
+    </div>
+  </section>
+
+  <div id="tooltip"></div>
+
+  <script src="/static/vendor/d3.min.js"></script>
+  <script src="/static/vendor/dagre-d3.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

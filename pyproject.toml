@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vizzpy"
+version = "0.8.0"
+description = "Interactive Python call tree visualizer — upload a project, explore its call graph in the browser"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Atul Saurav" }]
+requires-python = ">=3.10"
+keywords = ["python", "call-tree", "call-graph", "ast", "visualization", "static-analysis"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = []  # pure stdlib — mermaid headless works with no extras
+
+[project.optional-dependencies]
+# SVG headless rendering (also requires system graphviz: brew/apt install graphviz)
+svg = ["graphviz>=0.20"]
+# Interactive web UI
+serve = [
+    "fastapi>=0.100",
+    "uvicorn[standard]>=0.23",
+    "python-multipart>=0.0.9",
+]
+# Everything
+all = ["vizzpy[svg,serve]"]
+dev = [
+    "vizzpy[all]",
+    "pytest>=8",
+    "pytest-cov",
+    "anyio[trio]",
+    "httpx",
+]
+
+[project.scripts]
+vizzpy = "vizzpy.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/atulsaurav/vizzpy"
+Repository = "https://github.com/atulsaurav/vizzpy"
+"Bug Tracker" = "https://github.com/atulsaurav/vizzpy/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vizzpy*"]
+
+[tool.setuptools.package-data]
+vizzpy = ["static/**/*"]
