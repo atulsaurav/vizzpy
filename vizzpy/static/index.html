@@ -31,8 +31,12 @@
   <section id="graph-panel" hidden>
     <div id="toolbar">
       <button id="fit-btn" title="Fit to screen">&#x229E; Fit</button>
-      <button id="level-btn" title="Toggle between function-level and module-level view">Function view</button>
-      <button id="deep-trace-btn" title="When a node is selected: Immediate shows direct callers/callees only; Deep trace follows the full upstream and downstream call chain">Immediate</button>
+      <label class="toolbar-check" title="Toggle between function-level and module-level view">
+        <input type="checkbox" id="level-check"> Module view
+      </label>
+      <label class="toolbar-check" title="When a node is selected: Immediate shows direct callers/callees only; Deep trace follows the full upstream and downstream call chain">
+        <input type="checkbox" id="deep-trace-check"> Deep trace
+      </label>
       <span id="node-count"></span>
     </div>
     <svg id="graph-svg">

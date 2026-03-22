@@ -25,8 +25,8 @@ const uploadSummary= document.getElementById("upload-summary");
 const uploadToggle = document.getElementById("upload-toggle");
 const graphPanel   = document.getElementById("graph-panel");
 const fitBtn         = document.getElementById("fit-btn");
-const levelBtn       = document.getElementById("level-btn");
-const deepTraceBtn   = document.getElementById("deep-trace-btn");
+const levelCheck     = document.getElementById("level-check");
+const deepTraceCheck = document.getElementById("deep-trace-check");
 const darkToggle     = document.getElementById("dark-toggle");
 const nodeCountEl  = document.getElementById("node-count");
 const tooltip      = document.getElementById("tooltip");
@@ -95,19 +95,15 @@ function _toModuleGraph(data) {
 }
 
 // ── Level toggle ──────────────────────────────────────────────────────────────
-levelBtn.addEventListener("click", () => {
-  viewLevel = viewLevel === "function" ? "module" : "function";
-  levelBtn.textContent   = viewLevel === "function" ? "Function view" : "Module view";
-  levelBtn.classList.toggle("active", viewLevel === "module");
+levelCheck.addEventListener("change", () => {
+  viewLevel = levelCheck.checked ? "module" : "function";
   if (viewLevel === "module") collapsedNodes.clear(); // module nodes have different ids
   if (graphData) renderGraph();
 });
 
 // ── Deep trace toggle ─────────────────────────────────────────────────────────
-deepTraceBtn.addEventListener("click", () => {
-  deepTrace = !deepTrace;
-  deepTraceBtn.textContent = deepTrace ? "Deep trace" : "Immediate";
-  deepTraceBtn.classList.toggle("active", deepTrace);
+deepTraceCheck.addEventListener("change", () => {
+  deepTrace = deepTraceCheck.checked;
   // Re-apply highlight with new trace depth if a node is selected
   if (highlightedNode !== null) applyHighlight(highlightedNode);
 });
@@ -268,6 +264,29 @@ function renderGraph() {
   const render = new dagreD3.render();
   render(inner, g);
 
+  // dagre-d3 doesn't always persist width/height on the node data after render.
+  // Read dimensions from the rendered DOM elements so that intersect() works during drag.
+  inner.selectAll("g.node").each(function(nodeId) {
+    const node = g.node(nodeId);
+    if (node && node.elem && (node.width == null || node.height == null)) {
+      const bbox = this.getBBox();
+      node.width  = bbox.width;
+      node.height = bbox.height;
+    }
+  });
+
+  // dagre-d3 sets marker-end as an SVG attribute with an absolute URL.  Firefox does not
+  // re-render SVG attribute-based marker-end when only the path 'd' changes (drag).
+  // Moving it to a CSS inline style forces Firefox to re-evaluate it on every repaint.
+  inner.selectAll("g.edgePath path.path").each(function() {
+    const me = this.getAttribute("marker-end");
+    if (me) {
+      const id = me.replace(/^url\([^#]*#/, "").replace(/\)$/, "");
+      this.removeAttribute("marker-end");
+      this.style.setProperty("marker-end", `url(#${id})`);
+    }
+  });
+
   // dagre-d3's createClusters only sets class="cluster"; it never copies node.class to the
   // rendered <g> element. Apply depth classes manually so CSS depth colours take effect.
   if (viewLevel === "function") {
@@ -392,7 +411,7 @@ function attachNodeHandlers(g, data) {
 
   // Build nodeId → [connected edge path elements] lookup for drag
   const connectedEdges = new Map();
-  graphData.nodes.forEach(n => connectedEdges.set(n.id, []));
+  data.nodes.forEach(n => connectedEdges.set(n.id, []));
   // "path.path" is the visible edge line — avoids descending into <defs> marker paths
   inner.selectAll("g.edgePath").each(function(ek) {
     const pathEl = d3.select(this).select("path.path");
@@ -467,22 +486,18 @@ function attachNodeHandlers(g, data) {
 }
 
 // Draw a cubic bezier edge between two node objects, connecting at their boundaries.
-// ARROW_PAD: marker refX=9, tip at x=10, strokeWidth=1.5 → tip overshoots endpoint by
-// (10-9)*1.5 = 1.5px.  Back the endpoint up by 2px so the tip lands at the node edge.
-const ARROW_PAD = 2;
+// Uses dagre-d3's intersect() (set up on each node during render) to find boundary points.
 function cubicPath(srcNode, tgtNode) {
-  // LR layout: exit from right edge of source, enter left edge of target
-  const x1 = srcNode.x + (srcNode.width  || 0) / 2;
-  const y1 = srcNode.y;
-  const x2 = tgtNode.x - (tgtNode.width  || 0) / 2 - ARROW_PAD;
-  const y2 = tgtNode.y;
-  // If target has been dragged behind source, fall back to center-to-center
-  if (x2 <= x1) {
-    const cx = (srcNode.x + tgtNode.x) / 2;
-    return `M${x1},${y1} C${cx},${y1} ${cx},${y2} ${tgtNode.x + (tgtNode.width || 0) / 2 - ARROW_PAD},${y2}`;
+  let src, tgt;
+  try {
+    src = srcNode.intersect(tgtNode);
+    tgt = tgtNode.intersect(srcNode);
+  } catch (_) {
+    src = { x: srcNode.x, y: srcNode.y };
+    tgt = { x: tgtNode.x, y: tgtNode.y };
   }
-  const cx = (x1 + x2) / 2;
-  return `M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2},${y2}`;
+  const cx = (src.x + tgt.x) / 2;
+  return `M${src.x},${src.y} C${cx},${src.y} ${cx},${tgt.y} ${tgt.x},${tgt.y}`;
 }
 
 // Recalculate each cluster rect to tightly wrap its current child node positions.
@@ -569,11 +584,7 @@ function fitToScreen(g) {
 }
 
 fitBtn.addEventListener("click", () => {
-  if (graphData) {
-    const activeData = viewLevel === "module" ? _toModuleGraph(graphData) : graphData;
-    const g = buildDagreGraph(activeData);
-    fitToScreen(g);
-  }
+  if (lastGraph) fitToScreen(lastGraph);
 });
 
 // ── Minimap ───────────────────────────────────────────────────────────────────

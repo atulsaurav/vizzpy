@@ -228,8 +228,7 @@ header .tagline { font-size: 0.8rem; color: var(--tagline); flex: 1; }
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
-#fit-btn,
-#level-btn {
+#fit-btn {
   padding: 4px 12px;
   font-size: 0.8rem;
   border: 1px solid var(--border);
@@ -238,12 +237,22 @@ header .tagline { font-size: 0.8rem; color: var(--tagline); flex: 1; }
   color: var(--text);
   cursor: pointer;
 }
-#fit-btn:hover,
-#level-btn:hover { background: var(--toolbar-btn-hover); }
-#level-btn.active {
-  background: var(--btn-bg);
-  color: #fff;
-  border-color: var(--btn-bg);
+#fit-btn:hover { background: var(--toolbar-btn-hover); }
+
+.toolbar-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+.toolbar-check input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--btn-bg);
 }
 #node-count { font-size: 0.8rem; color: var(--text-faint); }
 
