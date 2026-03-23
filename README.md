@@ -24,7 +24,7 @@ VizzPy statically analyzes Python source files and renders an interactive call g
 
 ## Installation
 
-Install only what you need:
+Install only what you need from [PyPI](https://pypi.org/project/vizzpy/):
 
 | Goal | Command |
 |---|---|
@@ -45,8 +45,8 @@ apt install graphviz    # Debian/Ubuntu
 ### Web UI
 
 ```bash
-vizzpy --serve
 # open http://127.0.0.1:8000
+vizzpy --serve
 
 # pre-load a local project — graph renders immediately on page open
 vizzpy --serve --project ./myproject
