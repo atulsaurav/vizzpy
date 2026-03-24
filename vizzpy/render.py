@@ -279,7 +279,7 @@ def _add_dot_cluster_tree(
                 )
 
 
-def render_svg(project_root: Path, output_path: Path, level: str = "function") -> None:
+def render_svg(project_root: Path, output_path: Path, level: str = "function", layout="spline") -> None:
     """
     Analyze *project_root* and write the call graph as an SVG to *output_path*.
 
@@ -291,12 +291,12 @@ def render_svg(project_root: Path, output_path: Path, level: str = "function") -
     graph_data = build_graph(project_root)
     if level == "module":
         graph_data = aggregate_to_modules(graph_data)
-    dot = _to_dot(graph_data, level=level)
+    dot = _to_dot(graph_data, level=level, layout=layout)
     svg_source = dot.pipe(format="svg").decode("utf-8")
     output_path.write_text(svg_source, encoding="utf-8")
 
 
-def _to_dot(graph_data: dict, level: str = "function") -> "graphviz.Digraph":
+def _to_dot(graph_data: dict, level: str = "function", layout: str = "spline") -> "graphviz.Digraph":
     import graphviz  # type: ignore
 
     node_by_id = {n["id"]: n for n in graph_data["nodes"]}
@@ -305,7 +305,7 @@ def _to_dot(graph_data: dict, level: str = "function") -> "graphviz.Digraph":
         graph_attr={
             "rankdir": "LR",
             "fontname": "Helvetica",
-            "splines": "ortho",
+            "splines": layout,
             "nodesep": "0.5",
             "ranksep": "1.0",
         },

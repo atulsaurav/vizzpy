@@ -1,5 +1,4 @@
 ```mermaid
-%%{init: {"flowchart": {"defaultRenderer": "elk"}} }%%
 flowchart LR
     subgraph main["main"]
         main____main___["__main__"]

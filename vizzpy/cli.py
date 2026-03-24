@@ -35,8 +35,8 @@ def cli() -> None:
     parser.add_argument(
         "--layout",
         choices=["elk", "dagre"],
-        default="elk",
-        help="Mermaid layout engine: elk (default, better for nested subgraphs) or dagre",
+        default="dagre",
+        help="Mermaid layout engine: elk (better for highly nested subgraphs) or dagre (default)",
     )
 
     args = parser.parse_args()
@@ -59,7 +59,7 @@ def cli() -> None:
             _run_headless(project_path, func_out, args.format, "function", args.layout)
             _run_headless(project_path, mod_out,  args.format, "module",   args.layout)
         else:
-            output_path = Path(args.output) if args.output else Path(f"{project_path.name}_call_tree{ext}")
+            output_path = Path(args.output) if args.output else Path(f"{project_path.name}_call_tree_functions{ext}")
             _run_headless(project_path, output_path, args.format, args.level, args.layout)
 
 
@@ -81,7 +81,7 @@ def _run_server(host: str, port: int, project_path: "Path | None" = None) -> Non
     uvicorn.run(app, host=host, port=port)
 
 
-def _run_headless(project_path: Path, output_path: Path, fmt: str, level: str, layout: str = "elk") -> None:
+def _run_headless(project_path: Path, output_path: Path, fmt: str, level: str, layout: str = "dagre") -> None:
     if not project_path.exists():
         sys.exit(f"Project path does not exist: {project_path}")
 
@@ -93,7 +93,11 @@ def _run_headless(project_path: Path, output_path: Path, fmt: str, level: str, l
     else:
         from vizzpy.render import render_svg
         try:
-            render_svg(project_path, output_path, level=level)
+            if layout == "elk":
+                layout = "ortho"
+            elif layout == "dagre":
+                layout = "spline"
+            render_svg(project_path, output_path, level=level, layout=layout)
         except ImportError as exc:
             sys.exit(
                 f"SVG rendering requires the graphviz package ({exc}).\n"
