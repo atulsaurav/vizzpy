@@ -70,9 +70,15 @@ function _toModuleGraph(data) {
     }
   }
 
+  // Set node.module to the parent namespace so dagre assigns it to the parent cluster
+  // rather than a redundant same-named cluster wrapping the single node.
   const nodes = [...moduleExternal.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([mod, ext]) => ({ id: mod, label: mod, module: mod, external: ext, docstring: null }));
+    .map(([mod, ext]) => {
+      const lastDot = mod.lastIndexOf(".");
+      const parentNS = lastDot === -1 ? null : mod.slice(0, lastDot);
+      return { id: mod, label: mod, module: parentNS || mod, external: ext, docstring: null };
+    });
 
   // Aggregate cross-module edges
   const edgeCounts = new Map();
@@ -91,7 +97,17 @@ function _toModuleGraph(data) {
       return { source: key.slice(0, sep), target: key.slice(sep + 1), count };
     });
 
-  return { nodes, edges, modules: {} }; // empty modules → no dagre clusters
+  // Build modules dict: only parent namespaces that actually group multiple modules
+  // (i.e. namespaces that are the parent of at least one module node).
+  // Top-level modules with no parent namespace are left unclustered.
+  const modules = {};
+  for (const n of nodes) {
+    if (n.module !== n.id) {
+      if (!modules[n.module]) modules[n.module] = [];
+      modules[n.module].push(n.id);
+    }
+  }
+  return { nodes, edges, modules };
 }
 
 // ── Level toggle ──────────────────────────────────────────────────────────────
@@ -289,15 +305,13 @@ function renderGraph() {
 
   // dagre-d3's createClusters only sets class="cluster"; it never copies node.class to the
   // rendered <g> element. Apply depth classes manually so CSS depth colours take effect.
-  if (viewLevel === "function") {
-    inner.selectAll("g.cluster").each(function(clusterId) {
-      const nodeData = g.node(clusterId);
-      if (nodeData && nodeData.class) {
-        const el = d3.select(this);
-        nodeData.class.split(/\s+/).forEach(cls => { if (cls) el.classed(cls, true); });
-      }
-    });
-  }
+  inner.selectAll("g.cluster").each(function(clusterId) {
+    const nodeData = g.node(clusterId);
+    if (nodeData && nodeData.class) {
+      const el = d3.select(this);
+      nodeData.class.split(/\s+/).forEach(cls => { if (cls) el.classed(cls, true); });
+    }
+  });
 
   attachNodeHandlers(g, activeData);
 
@@ -332,14 +346,14 @@ function _buildModuleHierarchy(moduleNames) {
 }
 
 function buildDagreGraph(data) {
-  const useCompound = viewLevel === "function"; // clusters only for function view
-  const g = new dagreD3.graphlib.Graph({ compound: useCompound, multigraph: false })
+  const hasModules = Object.keys(data.modules).length > 0;
+  const g = new dagreD3.graphlib.Graph({ compound: hasModules, multigraph: false })
     .setGraph({ rankdir: "LR", nodesep: 40, ranksep: 80, marginx: 20, marginy: 20 })
     .setDefaultEdgeLabel(() => ({}));
 
-  const hiddenNodes = viewLevel === "function" ? computeHiddenNodes(data) : new Set();
+  const hiddenNodes = computeHiddenNodes(data);
 
-  if (viewLevel === "function") {
+  if (hasModules) {
     const { nodes: treeNodes, topLevel } = _buildModuleHierarchy(Object.keys(data.modules));
 
     function _addClusters(keys, parentId, depthIdx) {
@@ -370,8 +384,9 @@ function buildDagreGraph(data) {
       rx: 6,
       ry: 6,
     });
-    if (viewLevel === "function") {
-      g.setParent(node.id, `__cluster__${node.module}`);
+    if (hasModules) {
+      const clusterKey = `__cluster__${node.module}`;
+      if (g.hasNode(clusterKey)) g.setParent(node.id, clusterKey);
     }
   }
 
