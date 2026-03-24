@@ -128,55 +128,56 @@ def _to_mermaid(graph_data: dict, level: str = "function", layout: str = "elk") 
         lines.append('%%{init: {"flowchart": {"defaultRenderer": "elk"}} }%%')
     lines.append("flowchart LR")
 
-    if level == "module":
-        # Flat nodes — no subgraph nesting at module level
-        for n in graph_data["nodes"]:
-            nid = _mermaid_id(n["id"])
-            lines.append(f"    {nid}(\"{n['label']}\")")
-    else:
-        # Split modules into project vs external for subgraph grouping
-        project_modules: dict[str, list[str]] = {}
-        external_modules: dict[str, list[str]] = {}
-        for module_name, node_ids in graph_data["modules"].items():
-            if all(nid in external_ids for nid in node_ids):
-                external_modules[module_name] = node_ids
-            else:
-                project_modules[module_name] = node_ids
+    # Split modules into project vs external for subgraph grouping.
+    # Works for both function and module level (module level uses parent-namespace clusters).
+    project_modules: dict[str, list[str]] = {}
+    external_modules: dict[str, list[str]] = {}
+    for module_name, node_ids in graph_data["modules"].items():
+        if all(nid in external_ids for nid in node_ids):
+            external_modules[module_name] = node_ids
+        else:
+            project_modules[module_name] = node_ids
 
-        style_lines: list[str] = []
+    style_lines: list[str] = []
 
-        # Project subgraphs — hierarchically nested by dotted module path
-        tree, top_keys = _build_module_tree(list(project_modules.keys()))
-        _emit_module_subtree(
-            top_keys, tree, project_modules, node_by_id, 1, lines, style_lines, depth_index=0
+    # Project subgraphs — hierarchically nested by dotted module path
+    tree, top_keys = _build_module_tree(list(project_modules.keys()))
+    _emit_module_subtree(
+        top_keys, tree, project_modules, node_by_id, 1, lines, style_lines, depth_index=0
+    )
+
+    # Emit any nodes not covered by a subgraph (e.g. top-level modules with no parent namespace).
+    clustered_ids = {nid for ids in graph_data["modules"].values() for nid in ids}
+    for n in graph_data["nodes"]:
+        if n["id"] not in clustered_ids:
+            lines.append(f"    {_mermaid_id(n['id'])}[\"{n['label']}\"]")
+
+    # External subgraphs — hierarchically nested under a single outer wrapper
+    if external_modules:
+        ext_fill, ext_stroke, ext_color = _EXT_OUTER_STYLE
+        lines.append('    subgraph __ext__["external libraries"]')
+        lines.append("        direction LR")
+        style_lines.append(
+            f"    style __ext__"
+            f" fill:{ext_fill},stroke:{ext_stroke},color:{ext_color},stroke-width:2px"
         )
-
-        # External subgraphs — hierarchically nested under a single outer wrapper
-        if external_modules:
-            ext_fill, ext_stroke, ext_color = _EXT_OUTER_STYLE
-            lines.append('    subgraph __ext__["external libraries"]')
-            lines.append("        direction LR")
+        ext_tree, ext_top = _build_module_tree(list(external_modules.keys()))
+        ext_style_lines: list[str] = []
+        _emit_module_subtree(
+            ext_top, ext_tree, external_modules, node_by_id, 2, lines, ext_style_lines, depth_index=0
+        )
+        # Override ext inner-module colours with the neutral external palette
+        inner_fill, inner_stroke, inner_color = _EXT_INNER_STYLE
+        for full_path in ext_tree:
+            safe = full_path.replace(".", "_").replace("-", "_")
             style_lines.append(
-                f"    style __ext__"
-                f" fill:{ext_fill},stroke:{ext_stroke},color:{ext_color},stroke-width:2px"
+                f"    style {safe}"
+                f" fill:{inner_fill},stroke:{inner_stroke},color:{inner_color},stroke-width:1px"
             )
-            ext_tree, ext_top = _build_module_tree(list(external_modules.keys()))
-            ext_style_lines: list[str] = []
-            _emit_module_subtree(
-                ext_top, ext_tree, external_modules, node_by_id, 2, lines, ext_style_lines, depth_index=0
-            )
-            # Override ext inner-module colours with the neutral external palette
-            inner_fill, inner_stroke, inner_color = _EXT_INNER_STYLE
-            for full_path in ext_tree:
-                safe = full_path.replace(".", "_").replace("-", "_")
-                style_lines.append(
-                    f"    style {safe}"
-                    f" fill:{inner_fill},stroke:{inner_stroke},color:{inner_color},stroke-width:1px"
-                )
-            lines.append("    end")
+        lines.append("    end")
 
-        # Flush subgraph style directives
-        lines.extend(style_lines)
+    # Flush subgraph style directives
+    lines.extend(style_lines)
 
     # Edges
     for edge in graph_data["edges"]:
@@ -319,9 +320,23 @@ def _to_dot(graph_data: dict, level: str = "function") -> "graphviz.Digraph":
         },
     )
 
-    if level == "module":
-        # Flat nodes — no cluster subgraphs at module level
-        for n in graph_data["nodes"]:
+    # Separate project vs external modules then build nested cluster hierarchy.
+    # Works for both function and module level (module level uses parent-namespace clusters).
+    project_modules: dict[str, list[str]] = {}
+    external_modules: dict[str, list[str]] = {}
+    for module_name, node_ids in graph_data["modules"].items():
+        if all(node_by_id[nid].get("external") for nid in node_ids):
+            external_modules[module_name] = node_ids
+        else:
+            project_modules[module_name] = node_ids
+
+    tree, top_keys = _build_module_tree(list(project_modules.keys()))
+    _add_dot_cluster_tree(dot, top_keys, tree, project_modules, node_by_id, 0)
+
+    # Emit any nodes not covered by a cluster (e.g. top-level modules with no parent namespace).
+    clustered_ids = {nid for ids in graph_data["modules"].values() for nid in ids}
+    for n in graph_data["nodes"]:
+        if n["id"] not in clustered_ids:
             if n.get("external"):
                 dot.node(
                     n["id"],
@@ -334,35 +349,23 @@ def _to_dot(graph_data: dict, level: str = "function") -> "graphviz.Digraph":
                 )
             else:
                 dot.node(n["id"], label=n["label"], tooltip=_dot_tooltip(n))
-    else:
-        # Separate project vs external modules then build nested cluster hierarchy
-        project_modules: dict[str, list[str]] = {}
-        external_modules: dict[str, list[str]] = {}
-        for module_name, node_ids in graph_data["modules"].items():
-            if all(node_by_id[nid].get("external") for nid in node_ids):
-                external_modules[module_name] = node_ids
-            else:
-                project_modules[module_name] = node_ids
 
-        tree, top_keys = _build_module_tree(list(project_modules.keys()))
-        _add_dot_cluster_tree(dot, top_keys, tree, project_modules, node_by_id, 0)
-
-        if external_modules:
-            ext_fill, ext_stroke, ext_color = _EXT_OUTER_STYLE
-            with dot.subgraph(name="cluster___ext__") as ext_sub:
-                ext_sub.attr(
-                    label="external libraries",
-                    style="rounded,filled",
-                    fillcolor=ext_fill,
-                    color=ext_stroke,
-                    fontcolor=ext_color,
-                    fontsize="10",
-                    penwidth="2",
-                )
-                ext_tree, ext_top = _build_module_tree(list(external_modules.keys()))
-                _add_dot_cluster_tree(
-                    ext_sub, ext_top, ext_tree, external_modules, node_by_id, 0, is_external=True
-                )
+    if external_modules:
+        ext_fill, ext_stroke, ext_color = _EXT_OUTER_STYLE
+        with dot.subgraph(name="cluster___ext__") as ext_sub:
+            ext_sub.attr(
+                label="external libraries",
+                style="rounded,filled",
+                fillcolor=ext_fill,
+                color=ext_stroke,
+                fontcolor=ext_color,
+                fontsize="10",
+                penwidth="2",
+            )
+            ext_tree, ext_top = _build_module_tree(list(external_modules.keys()))
+            _add_dot_cluster_tree(
+                ext_sub, ext_top, ext_tree, external_modules, node_by_id, 0, is_external=True
+            )
 
     # Add edges
     for edge in graph_data["edges"]:

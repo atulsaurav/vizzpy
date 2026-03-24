@@ -150,11 +150,21 @@ def test_aggregate_to_modules_node_label_equals_id(tmp_path):
 
 
 def test_aggregate_to_modules_modules_dict_keys(tmp_path):
+    # Top-level modules (no dotted parent) have no parent namespace cluster → empty dict
     (tmp_path / "a.py").write_text("def f(): pass")
     (tmp_path / "b.py").write_text("from a import f\ndef g():\n    f()")
     g = aggregate_to_modules(build_graph(tmp_path))
-    assert set(g["modules"].keys()) == {"a", "b"}
-    assert g["modules"]["a"] == ["a"]
+    assert g["modules"] == {}
+
+
+def test_aggregate_to_modules_modules_dict_keys_nested(tmp_path):
+    # Nested modules are grouped under their parent namespace cluster
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "a.py").write_text("def f(): pass")
+    (tmp_path / "pkg" / "b.py").write_text("from pkg.a import f\ndef g():\n    f()")
+    g = aggregate_to_modules(build_graph(tmp_path))
+    assert "pkg" in g["modules"]
+    assert set(g["modules"]["pkg"]) == {"pkg.a", "pkg.b"}
 
 
 def test_aggregate_to_modules_mixed_module_not_external(tmp_path):

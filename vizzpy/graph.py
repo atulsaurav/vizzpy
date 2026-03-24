@@ -34,16 +34,19 @@ def aggregate_to_modules(graph: dict) -> dict:
         elif not n["external"]:
             module_external[mod] = False
 
-    nodes = [
-        {
+    # Set module to the parent namespace so renderers assign each module node to its
+    # parent cluster rather than a redundant same-named wrapper cluster.
+    nodes = []
+    for mod in sorted(module_external):
+        last_dot = mod.rfind(".")
+        parent_ns = mod[:last_dot] if last_dot != -1 else mod
+        nodes.append({
             "id": mod,
             "label": mod,
-            "module": mod,
+            "module": parent_ns,
             "docstring": None,
             "external": module_external[mod],
-        }
-        for mod in sorted(module_external)
-    ]
+        })
 
     # Aggregate cross-module edges
     edge_counts: dict[tuple[str, str], int] = {}
@@ -64,8 +67,15 @@ def aggregate_to_modules(graph: dict) -> dict:
         for (src, tgt), cnt in sorted(edge_counts.items())
     ]
 
-    # modules dict: each module maps to a list containing itself (single-item cluster)
-    modules = {mod: [mod] for mod in sorted(module_external)}
+    # modules dict: parent namespace → [direct child module IDs].
+    # Top-level modules (no dotted parent) are left unclustered.
+    modules: dict[str, list[str]] = {}
+    for mod in sorted(module_external):
+        last_dot = mod.rfind(".")
+        if last_dot == -1:
+            continue  # top-level: no parent namespace cluster
+        parent_ns = mod[:last_dot]
+        modules.setdefault(parent_ns, []).append(mod)
 
     return {"nodes": nodes, "edges": edges, "modules": modules}
 

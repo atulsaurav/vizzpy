@@ -10,13 +10,13 @@ from vizzpy.render import render_mermaid, _mermaid_id, _to_mermaid
 # ── _mermaid_id ───────────────────────────────────────────────────────────────
 
 def test_mermaid_id_replaces_dots():
-    assert _mermaid_id("pkg.mod.func") == "pkg__mod__func"
+    assert _mermaid_id("pkg.mod.func") == "pkg__mod__func_"
 
 def test_mermaid_id_replaces_hyphens():
-    assert _mermaid_id("my-pkg.func") == "my_pkg__func"
+    assert _mermaid_id("my-pkg.func") == "my_pkg__func_"
 
 def test_mermaid_id_simple():
-    assert _mermaid_id("main") == "main"
+    assert _mermaid_id("main") == "main_"
 
 
 # ── _to_mermaid ───────────────────────────────────────────────────────────────
@@ -44,14 +44,14 @@ def test_to_mermaid_contains_subgraph(tmp_path):
 def test_to_mermaid_nodes_present(tmp_path):
     g = _graph(tmp_path, "def a(): pass\ndef b():\n    a()")
     md = _to_mermaid(g)
-    assert 'm__a["a"]' in md
-    assert 'm__b["b"]' in md
+    assert 'm__a_["a"]' in md
+    assert 'm__b_["b"]' in md
 
 
 def test_to_mermaid_edge_present(tmp_path):
     g = _graph(tmp_path, "def a(): pass\ndef b():\n    a()")
     md = _to_mermaid(g)
-    assert "m__b --> m__a" in md
+    assert "m__b_ --> m__a_" in md
 
 
 def test_to_mermaid_edge_count_label(tmp_path):
@@ -64,7 +64,7 @@ def test_to_mermaid_single_call_no_count_label(tmp_path):
     g = _graph(tmp_path, "def a(): pass\ndef b():\n    a()")
     md = _to_mermaid(g)
     # Single-call edge must not carry a label
-    assert re.search(r"m__b -->\s*m__a", md)
+    assert re.search(r"m__b_ -->\s*m__a_", md)
     assert '-->|' not in md
 
 
@@ -76,7 +76,7 @@ def test_to_mermaid_cross_module(tmp_path):
     md = _to_mermaid(g)
     assert 'subgraph a["a"]' in md
     assert 'subgraph b["b"]' in md
-    assert "b__caller --> a__helper" in md
+    assert "b__caller_ --> a__helper_" in md
 
 
 def test_to_mermaid_empty_project(tmp_path):
@@ -145,9 +145,9 @@ def test_to_mermaid_module_level_flat_nodes(tmp_path):
     from vizzpy.graph import build_graph, aggregate_to_modules
     g = aggregate_to_modules(build_graph(tmp_path))
     md = _to_mermaid(g, level="module")
-    # Module nodes appear as flat items — no subgraph wrappers
-    assert 'a["a"]' in md
-    assert 'b["b"]' in md
+    # Top-level modules (no parent namespace) are emitted flat — no subgraph wrappers
+    assert 'a_["a"]' in md
+    assert 'b_["b"]' in md
     assert "subgraph" not in md
 
 
@@ -157,7 +157,7 @@ def test_to_mermaid_module_level_edge(tmp_path):
     from vizzpy.graph import build_graph, aggregate_to_modules
     g = aggregate_to_modules(build_graph(tmp_path))
     md = _to_mermaid(g, level="module")
-    assert "b --> a" in md
+    assert "b_ --> a_" in md
 
 
 def test_to_mermaid_module_level_external_styled(tmp_path):
@@ -166,7 +166,7 @@ def test_to_mermaid_module_level_external_styled(tmp_path):
     g = aggregate_to_modules(build_graph(tmp_path))
     md = _to_mermaid(g, level="module")
     assert "classDef external" in md
-    assert "class os external" in md
+    assert "class os_ external" in md
 
 
 def test_render_mermaid_module_level_writes_file(tmp_path):
@@ -178,5 +178,5 @@ def test_render_mermaid_module_level_writes_file(tmp_path):
     render_mermaid(proj, out, level="module")
     content = out.read_text()
     assert "```mermaid" in content
-    assert 'a["a"]' in content
+    assert 'a_["a"]' in content
     assert "subgraph" not in content
