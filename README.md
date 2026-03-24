@@ -2,6 +2,8 @@
 
 > Understand any Python codebase in seconds — no instrumentation, no code changes, no runtime required.
 
+![Screenshot](examples/image-1.png)
+ 
 VizzPy statically analyzes Python source files and renders an interactive call graph showing which functions call which, grouped by module hierarchy. Works on code you can't or don't want to run.
 
 **Common uses:**
