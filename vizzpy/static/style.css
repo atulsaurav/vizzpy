@@ -297,6 +297,10 @@ header .tagline { font-size: 0.8rem; color: var(--tagline); flex: 1; }
 .cluster-depth-1 > g.label text { fill: #14532d; }
 .cluster-depth-2 rect { fill: #fef9c3; stroke: #ca8a04; stroke-width: 2px; }
 .cluster-depth-2 > g.label text { fill: #713f12; }
+.cluster-depth-3 rect { fill: #ffe4e6; stroke: #e11d48; stroke-width: 2px; }
+.cluster-depth-3 > g.label text { fill: #881337; }
+.cluster-depth-4 rect { fill: #ccfbf1; stroke: #0d9488; stroke-width: 2px; }
+.cluster-depth-4 > g.label text { fill: #134e4a; }
 
 /* Depth-based cluster colours — dark mode */
 body.dark .cluster-depth-0 rect { fill: #1e3154; stroke: #3b82f6; }
@@ -305,6 +309,10 @@ body.dark .cluster-depth-1 rect { fill: #14312a; stroke: #16a34a; }
 body.dark .cluster-depth-1 > g.label text { fill: #86efac; }
 body.dark .cluster-depth-2 rect { fill: #2d2208; stroke: #ca8a04; }
 body.dark .cluster-depth-2 > g.label text { fill: #fde68a; }
+body.dark .cluster-depth-3 rect { fill: #3d0a14; stroke: #e11d48; }
+body.dark .cluster-depth-3 > g.label text { fill: #fda4af; }
+body.dark .cluster-depth-4 rect { fill: #0a2825; stroke: #0d9488; }
+body.dark .cluster-depth-4 > g.label text { fill: #5eead4; }
 
 /* Single-click highlight: selected (amber), upstream callers (orange), downstream callees (violet) */
 .node.highlighted rect  { stroke: #f59e0b; stroke-width: 2.5px; fill: #fef3c7; }

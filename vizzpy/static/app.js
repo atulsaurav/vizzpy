@@ -363,7 +363,7 @@ function buildDagreGraph(data) {
         g.setNode(clusterId, {
           label: fullPath,
           clusterLabelPos: "top",
-          class: `cluster-node cluster-depth-${Math.min(depthIdx, 2)}`,
+          class: `cluster-node cluster-depth-${Math.min(depthIdx, 4)}`,
         });
         if (parentId) g.setParent(clusterId, parentId);
         if (tNode.children.size > 0) _addClusters(tNode.children, clusterId, depthIdx + 1);

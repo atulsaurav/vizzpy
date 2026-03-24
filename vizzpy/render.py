@@ -60,6 +60,8 @@ _SUBGRAPH_DEPTH_STYLES: list[tuple[str, str, str]] = [
     ("#dbeafe", "#3b82f6", "#1e3a8a"),  # depth 0 – blue  (top-level pkg)
     ("#dcfce7", "#16a34a", "#14532d"),  # depth 1 – green (sub-package)
     ("#fef9c3", "#ca8a04", "#713f12"),  # depth 2 – amber (deep module)
+    ("#ffe4e6", "#e11d48", "#881337"),  # depth 3 – rose
+    ("#ccfbf1", "#0d9488", "#134e4a"),  # depth 4 – teal
 ]
 # Fallback for depths beyond the palette length
 _SUBGRAPH_DEPTH_STYLES_FALLBACK = ("#f3e8ff", "#9333ea", "#3b0764")  # purple
