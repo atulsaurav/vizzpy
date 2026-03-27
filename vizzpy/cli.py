@@ -3,7 +3,7 @@ vizzpy CLI entry point.
 
 Usage:
   vizzpy --serve   [--host HOST] [--port PORT] [--project PROJECT_PATH]
-  vizzpy --headless --project PROJECT_PATH [--format svg|mermaid] [--level function|module|both] [--output OUTPUT]
+  vizzpy --headless --project PROJECT_PATH [--format svg|mermaid] [--level function|module|both] [--output OUTPUT] [--fail-on-missing-docs]
 """
 from __future__ import annotations
 import argparse
@@ -38,6 +38,11 @@ def cli() -> None:
         default="dagre",
         help="Mermaid layout engine: elk (better for highly nested subgraphs) or dagre (default)",
     )
+    parser.add_argument(
+        "--fail-on-missing-docs",
+        action="store_true",
+        help="Exit with code 1 if any functions are missing docstrings (useful as a CI quality gate)",
+    )
 
     args = parser.parse_args()
 
@@ -61,6 +66,37 @@ def cli() -> None:
         else:
             output_path = Path(args.output) if args.output else Path(f"{project_path.name}_call_tree_functions{ext}")
             _run_headless(project_path, output_path, args.format, args.level, args.layout)
+        _report_missing_docstrings(project_path, fail=args.fail_on_missing_docs)
+
+
+def _report_missing_docstrings(project_path: Path, fail: bool = False) -> None:
+    """Print a grouped summary of functions/methods that have no docstring.
+
+    If *fail* is True, exits with code 1 when any are found (CI quality gate).
+    """
+    from vizzpy.parser.project import analyze_project
+    from collections import defaultdict
+
+    _, node_info, _ = analyze_project(project_path)
+
+    missing: dict[str, list[str]] = defaultdict(list)
+    for span in node_info.values():
+        if not (span.docstring or "").strip():
+            missing[span.module_name].append(span.display_name)
+
+    if not missing:
+        print("\nAll functions have docstrings.")
+        return
+
+    total = sum(len(v) for v in missing.values())
+    print(f"\nFunctions missing docstrings ({total} total):")
+    for module in sorted(missing):
+        print(f"  {module}")
+        for name in sorted(missing[module]):
+            print(f"    - {name}")
+
+    if fail:
+        sys.exit(1)
 
 
 def _run_server(host: str, port: int, project_path: "Path | None" = None) -> None:

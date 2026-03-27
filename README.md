@@ -4,7 +4,7 @@
 
 ![Screenshot](examples/image-1.png)
  
-VizzPy statically analyzes Python source files and renders an interactive call graph showing which functions call which, grouped by module hierarchy. Works on code you can't or don't want to run.
+VizzPy statically analyzes Python source files and Jupyter notebooks and renders an interactive call graph showing which functions call which, grouped by module hierarchy. Works on code you can't or don't want to run.
 
 **Common uses:**
 - Drop it in CI to auto-generate an always-fresh architecture diagram committed alongside the code
@@ -18,11 +18,13 @@ VizzPy statically analyzes Python source files and renders an interactive call g
 - **Hierarchical module grouping** — `app.services.orders` is visually nested inside `app.services` inside `app`; depth-coded with distinct colors (blue → green → amber), consistent across all three output formats
 - **Two granularity levels** — toggle between function-level and module-level graphs in the UI or via `--level`
 - **Three output formats** — interactive browser UI, Mermaid markdown (CI-friendly, zero extra deps), and SVG (print-quality via Graphviz)
-- **Cross-module resolution** — follows imports across files to draw edges between modules
+- **Jupyter notebook support** — `.ipynb` files are analyzed alongside `.py` files; IPython magic commands are stripped automatically
+- **Cross-module resolution** — follows imports across files and notebooks to draw edges between modules
 - **External libraries separated** — stdlib and third-party calls shown in a distinct muted section; your code stays readable
 - **Pre-load a project** — `--serve --project ./myapp` renders the graph before the browser opens
 - **Archive upload** — drag-and-drop `.zip`, `.tar.gz`, `.egg`, or `.whl` in the web UI
 - **Docstring tooltips** — hover any node to see the fully-qualified name and docstring (interactive and SVG)
+- **Missing docstring report** — headless mode prints a grouped summary of all functions without docstrings after rendering; use `--fail-on-missing-docs` to exit with code 1 as a CI quality gate
 
 ## Installation
 
@@ -54,7 +56,7 @@ vizzpy --serve
 vizzpy --serve --project ./myproject
 ```
 
-Upload a `.zip`, `.tar.gz`, `.egg`, or `.whl`, then click **Analyze**.
+Upload a `.zip`, `.tar.gz`, `.egg`, or `.whl` containing `.py` files, Jupyter notebooks (`.ipynb`), or both, then click **Analyze**.
 
 - **Scroll / pinch** to zoom  ·  **Drag background** to pan  ·  **Drag nodes** to rearrange
 - **Single-click a node** to highlight it and its callers (orange) / callees (violet); click again or the background to clear
@@ -83,6 +85,23 @@ vizzpy --headless --project ./myproject --layout dagre   # classic Mermaid layou
 vizzpy --headless --project ./myproject --format mermaid --output graph.md
 ```
 
+After rendering, headless mode always prints a summary of functions that are missing docstrings, grouped by module:
+
+```
+Functions missing docstrings (3 total):
+  services.order
+    - OrderService.cancel
+    - process_order
+  utils.helpers
+    - retry
+```
+
+Add `--fail-on-missing-docs` to use this as a CI quality gate — the process exits with code 1 if any functions are missing docstrings, failing the pipeline:
+
+```bash
+vizzpy --headless --project . --fail-on-missing-docs
+```
+
 ### Options
 
 ```
@@ -92,6 +111,7 @@ vizzpy --headless --project PROJECT_PATH
                   [--level function|module|both]
                   [--layout elk|dagre]
                   [--output OUTPUT]
+                  [--fail-on-missing-docs]
 ```
 
 ## CI Integration
@@ -170,10 +190,10 @@ Both pipelines generate `<project>_call_tree_functions.md` and `<project>_call_t
 
 ## How it works
 
-VizzPy uses Python's `ast` module to do a two-pass analysis of your source files:
+VizzPy uses Python's `ast` module to do a two-pass analysis of your source files and Jupyter notebooks:
 
-1. **Scope pass** — collects every function and class method with its qualified name (`module.ClassName.method`)
-2. **Edge pass** — walks each file again, resolves `self.method()`, `cls.method()`, imported names, and direct calls to project-internal functions
+1. **Scope pass** — collects every function and class method with its qualified name (`module.ClassName.method`); for notebooks, code cells are extracted and concatenated into a single virtual module (e.g. `notebooks/explore.ipynb` → `notebooks.explore`)
+2. **Edge pass** — walks each file again, resolves `self.method()`, `cls.method()`, imported names, and direct calls to project-internal functions; cross-file and notebook-to-module edges are resolved the same way
 
 Results are rendered with [dagre-d3](https://github.com/dagrejs/dagre-d3) (vendored, works offline). Calls to external libraries are shown as muted leaf nodes — their internals are not traced.
 

@@ -110,3 +110,87 @@ def test_external_call_edge_included(tmp_path):
     )
     edges, _, _ = analyze_project(tmp_path)
     assert any(e[0] == "m.run" and "getcwd" in e[1] for e in edges)
+
+
+# ── .ipynb notebook support ───────────────────────────────────────────────────
+
+def test_module_name_notebook(tmp_path):
+    f = tmp_path / "analysis.ipynb"
+    f.touch()
+    assert get_module_name(f, tmp_path) == "analysis"
+
+
+def test_module_name_nested_notebook(tmp_path):
+    (tmp_path / "notebooks").mkdir()
+    f = tmp_path / "notebooks" / "explore.ipynb"
+    f.touch()
+    assert get_module_name(f, tmp_path) == "notebooks.explore"
+
+
+def _make_notebook(tmp_path, name, cells):
+    """Write a minimal .ipynb file with the given list of code-cell source strings."""
+    import json
+    nb = {
+        "nbformat": 4,
+        "nbformat_minor": 5,
+        "metadata": {},
+        "cells": [
+            {"cell_type": "code", "source": src, "metadata": {}, "outputs": [], "execution_count": None}
+            for src in cells
+        ],
+    }
+    p = tmp_path / name
+    p.write_text(json.dumps(nb))
+    return p
+
+
+def test_notebook_functions_discovered(tmp_path):
+    _make_notebook(tmp_path, "nb.ipynb", ["def helper():\n    pass\n", "def main():\n    helper()\n"])
+    edges, node_info, all_names = analyze_project(tmp_path)
+    assert "nb.helper" in all_names
+    assert "nb.main" in all_names
+    assert ("nb.main", "nb.helper") in edges
+
+
+def test_notebook_magic_lines_stripped(tmp_path):
+    _make_notebook(tmp_path, "nb.ipynb", [
+        "%matplotlib inline\n!pip install pandas\ndef compute():\n    pass\n"
+    ])
+    # Should not raise SyntaxError; function must be discovered
+    _, node_info, _ = analyze_project(tmp_path)
+    assert "nb.compute" in node_info
+
+
+def test_notebook_markdown_cells_ignored(tmp_path):
+    import json
+    nb = {
+        "nbformat": 4,
+        "nbformat_minor": 5,
+        "metadata": {},
+        "cells": [
+            {"cell_type": "markdown", "source": "# Title\nsome text", "metadata": {}},
+            {"cell_type": "code", "source": "def real(): pass", "metadata": {}, "outputs": [], "execution_count": None},
+        ],
+    }
+    (tmp_path / "nb.ipynb").write_text(json.dumps(nb))
+    _, node_info, _ = analyze_project(tmp_path)
+    assert "nb.real" in node_info
+
+
+def test_notebook_checkpoints_excluded(tmp_path):
+    cp_dir = tmp_path / ".ipynb_checkpoints"
+    cp_dir.mkdir()
+    _make_notebook(cp_dir, "nb-checkpoint.ipynb", ["def stale(): pass"])
+    _make_notebook(tmp_path, "nb.ipynb", ["def live(): pass"])
+    _, node_info, _ = analyze_project(tmp_path)
+    assert "nb.live" in node_info
+    assert not any("stale" in qn for qn in node_info)
+
+
+def test_notebook_cross_module_edges(tmp_path):
+    (tmp_path / "utils.py").write_text("def helper(): pass")
+    _make_notebook(tmp_path, "nb.ipynb", [
+        "from utils import helper\ndef run():\n    helper()\n"
+    ])
+    edges, _, _ = analyze_project(tmp_path)
+    assert ("nb.run", "utils.helper") in edges
