@@ -2,7 +2,7 @@
 FastAPI application.
 
 Routes:
-  GET  /               → serves static/index.html
+  GET  /               → serves VizzX interactive frontend (via vizzx package)
   GET  /api/preloaded  → returns pre-analyzed graph JSON (if a project was supplied at startup)
   POST /api/analyze    → accepts a .zip, .tar.gz, .egg, or .whl upload, returns graph JSON
   GET  /static/*       → static assets (JS, CSS, vendor libs)
@@ -16,14 +16,12 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
+from vizzx import create_ui_router, mount_static
 
 from .graph import build_graph
 
 logger = logging.getLogger(__name__)
-
-STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(title="VizPy")
 
@@ -35,13 +33,13 @@ def preload_project(path: Path) -> None:
     global _preloaded_graph
     _preloaded_graph = build_graph(path)
 
-# Serve static assets under /static
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-
-@app.get("/")
-async def index():
-    return FileResponse(str(STATIC_DIR / "index.html"))
+# Mount the VizzX interactive frontend
+app.include_router(create_ui_router(
+    title="VizzPy",
+    upload_accept=".zip,.tar.gz,.tgz,.egg,.whl",
+    upload_label="Upload a Python project (.zip, .tar.gz, .egg, or .whl) to visualize its call tree",
+))
+mount_static(app)
 
 
 @app.get("/api/preloaded")

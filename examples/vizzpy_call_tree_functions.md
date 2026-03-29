@@ -7,6 +7,7 @@ flowchart LR
         direction LR
         subgraph vizzpy_cli["vizzpy.cli"]
             vizzpy__cli____main___["__main__"]
+            vizzpy__cli___report_missing_docstrings_["_report_missing_docstrings"]
             vizzpy__cli___run_headless_["_run_headless"]
             vizzpy__cli___run_server_["_run_server"]
             vizzpy__cli__cli_["cli"]
@@ -22,6 +23,7 @@ flowchart LR
             subgraph vizzpy_parser_project["vizzpy.parser.project"]
                 vizzpy__parser__project____main___["__main__"]
                 vizzpy__parser__project___is_test_file_["_is_test_file"]
+                vizzpy__parser__project___notebook_to_source_["_notebook_to_source"]
                 vizzpy__parser__project__analyze_project_["analyze_project"]
                 vizzpy__parser__project__get_module_name_["get_module_name"]
             end
@@ -70,7 +72,6 @@ flowchart LR
             vizzpy__server____main___["__main__"]
             vizzpy__server___find_project_root_["_find_project_root"]
             vizzpy__server__analyze_["analyze"]
-            vizzpy__server__index_["index"]
             vizzpy__server__preload_project_["preload_project"]
             vizzpy__server__preloaded_["preloaded"]
         end
@@ -94,21 +95,23 @@ flowchart LR
             fastapi__File_["File"]
             fastapi__HTTPException_["HTTPException"]
             subgraph fastapi_responses["fastapi.responses"]
-                fastapi__responses__FileResponse_["FileResponse"]
                 fastapi__responses__JSONResponse_["JSONResponse"]
-            end
-            subgraph fastapi_staticfiles["fastapi.staticfiles"]
-                fastapi__staticfiles__StaticFiles_["StaticFiles"]
             end
         end
         subgraph graphviz["graphviz"]
             graphviz__Digraph_["Digraph"]
+        end
+        subgraph json["json"]
+            json__loads_["loads"]
         end
         subgraph logging["logging"]
             logging__getLogger_["getLogger"]
         end
         subgraph pathlib["pathlib"]
             pathlib__Path_["Path"]
+        end
+        subgraph re["re"]
+            re__compile_["compile"]
         end
         subgraph sys["sys"]
             sys__exit_["exit"]
@@ -121,6 +124,10 @@ flowchart LR
         end
         subgraph uvicorn["uvicorn"]
             uvicorn__run_["run"]
+        end
+        subgraph vizzx["vizzx"]
+            vizzx__create_ui_router_["create_ui_router"]
+            vizzx__mount_static_["mount_static"]
         end
         subgraph zipfile["zipfile"]
             zipfile__ZipFile_["ZipFile"]
@@ -142,17 +149,22 @@ flowchart LR
     style collections fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
     style fastapi fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
     style fastapi_responses fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
-    style fastapi_staticfiles fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
     style graphviz fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
+    style json fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
     style logging fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
     style pathlib fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
+    style re fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
     style sys fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
     style tarfile fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
     style tempfile fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
     style uvicorn fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
+    style vizzx fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
     style zipfile fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1px
     main____main___ --> vizzpy__cli__cli_
     vizzpy__cli____main___ --> vizzpy__cli__cli_
+    vizzpy__cli___report_missing_docstrings_ --> collections__defaultdict_
+    vizzpy__cli___report_missing_docstrings_ --> sys__exit_
+    vizzpy__cli___report_missing_docstrings_ --> vizzpy__parser__project__analyze_project_
     vizzpy__cli___run_headless_ -->|"2x"| sys__exit_
     vizzpy__cli___run_headless_ --> vizzpy__render__render_mermaid_
     vizzpy__cli___run_headless_ --> vizzpy__render__render_svg_
@@ -161,6 +173,7 @@ flowchart LR
     vizzpy__cli___run_server_ --> vizzpy__server__preload_project_
     vizzpy__cli__cli_ --> argparse__ArgumentParser_
     vizzpy__cli__cli_ -->|"7x"| pathlib__Path_
+    vizzpy__cli__cli_ --> vizzpy__cli___report_missing_docstrings_
     vizzpy__cli__cli_ -->|"3x"| vizzpy__cli___run_headless_
     vizzpy__cli__cli_ --> vizzpy__cli___run_server_
     vizzpy__graph__build_graph_ -->|"2x"| collections__defaultdict_
@@ -168,8 +181,11 @@ flowchart LR
     vizzpy__graph__build_graph_ --> vizzpy__graph___fallback_module_
     vizzpy__graph__build_graph_ --> vizzpy__parser__project__analyze_project_
     vizzpy__parser__project____main___ --> logging__getLogger_
+    vizzpy__parser__project____main___ --> re__compile_
+    vizzpy__parser__project___notebook_to_source_ --> json__loads_
     vizzpy__parser__project__analyze_project_ --> ast__parse_
     vizzpy__parser__project__analyze_project_ --> vizzpy__parser__project___is_test_file_
+    vizzpy__parser__project__analyze_project_ --> vizzpy__parser__project___notebook_to_source_
     vizzpy__parser__project__analyze_project_ --> vizzpy__parser__project__get_module_name_
     vizzpy__parser__project__analyze_project_ --> vizzpy__parser__walker__CallVisitor_
     vizzpy__parser__project__analyze_project_ --> vizzpy__parser__walker__build_import_map_
@@ -215,9 +231,9 @@ flowchart LR
     vizzpy__render__render_svg_ --> vizzpy__graph__build_graph_
     vizzpy__render__render_svg_ --> vizzpy__render___to_dot_
     vizzpy__server____main___ --> fastapi__FastAPI_
-    vizzpy__server____main___ --> fastapi__staticfiles__StaticFiles_
     vizzpy__server____main___ --> logging__getLogger_
-    vizzpy__server____main___ --> pathlib__Path_
+    vizzpy__server____main___ --> vizzx__create_ui_router_
+    vizzpy__server____main___ --> vizzx__mount_static_
     vizzpy__server__analyze_ --> fastapi__File_
     vizzpy__server__analyze_ -->|"4x"| fastapi__HTTPException_
     vizzpy__server__analyze_ --> fastapi__responses__JSONResponse_
@@ -227,9 +243,8 @@ flowchart LR
     vizzpy__server__analyze_ --> vizzpy__graph__build_graph_
     vizzpy__server__analyze_ --> vizzpy__server___find_project_root_
     vizzpy__server__analyze_ --> zipfile__ZipFile_
-    vizzpy__server__index_ --> fastapi__responses__FileResponse_
     vizzpy__server__preload_project_ --> vizzpy__graph__build_graph_
     vizzpy__server__preloaded_ --> fastapi__responses__JSONResponse_
     classDef external fill:#f0f0f0,stroke:#aaaaaa,color:#888888,stroke-dasharray:4
-    class argparse__ArgumentParser_,ast__get_docstring_,ast__parse_,ast__walk_,collections__defaultdict_,fastapi__FastAPI_,fastapi__File_,fastapi__HTTPException_,fastapi__responses__FileResponse_,fastapi__responses__JSONResponse_,fastapi__staticfiles__StaticFiles_,graphviz__Digraph_,logging__getLogger_,pathlib__Path_,sys__exit_,tarfile__open_,tempfile__TemporaryDirectory_,uvicorn__run_,vizzpy__parser__scope__FuncSpan_,zipfile__ZipFile_ external
+    class argparse__ArgumentParser_,ast__get_docstring_,ast__parse_,ast__walk_,collections__defaultdict_,fastapi__FastAPI_,fastapi__File_,fastapi__HTTPException_,fastapi__responses__JSONResponse_,graphviz__Digraph_,json__loads_,logging__getLogger_,pathlib__Path_,re__compile_,sys__exit_,tarfile__open_,tempfile__TemporaryDirectory_,uvicorn__run_,vizzpy__parser__scope__FuncSpan_,vizzx__create_ui_router_,vizzx__mount_static_,zipfile__ZipFile_ external
 ```
